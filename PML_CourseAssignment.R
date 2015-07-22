@@ -10,7 +10,7 @@ library(doSNOW)
 ### pml-training.csv 
 ### pml-testing.csv 
 
-download.data <- function {
+download.data <- function() {
  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv",method="curl")
  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv",method="curl")
 }
@@ -90,13 +90,13 @@ write.pml.predictions <- function(x){
         }        
 }
 ### Run the model using the testing file we initial received 
-validation <- read.data("pml-testing.csv")
+validateTesting <- read.data("pml-testing.csv")
 library(xtable)
 
 ### Pass the testing/validation file for the model.rf that we developed from the training set
 get
 write.pml.predictions(predict(model.rf, 
-        newdata=dropcolumns(validation[,eval(names(which(nacolumns == F))[-60]),with=F])))
+        newdata=dropcolumns(validateTesting[,eval(names(which(nacolumns == F))[-60]),with=F])))
 
 
 
