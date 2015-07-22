@@ -1,0 +1,105 @@
+library(caret)
+library(ggplot2)
+library(doMC)
+library(knitr)
+library(xtable)
+library(randomForest)
+library(doSNOW)
+
+## Function: Download the input files provided in the Course
+### pml-training.csv 
+### pml-testing.csv 
+
+download.data <- function {
+ download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv",method="curl")
+ download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv",method="curl")
+}
+
+### Function: Read the file and clean it up 
+### 1. Change all "#DIV/0! to blanks
+
+read.data <- function(file){
+ fread(file,na.strings=c("#DIV/0!",""))
+}
+
+### Read all files presented for the course
+rawtrain <- read.data("pml-training.csv")
+rawtest <- read.data("pml-testing.csv")
+
+### Set the seed so that the output is reproducible
+set.seed(15)
+
+### Get all the column names so we can use it subset it later on
+names <- colnames(rawtrain)
+
+## Functions: Identify columns that contain NA and marked them accordingly
+nacolumns <- rawtrain[,sapply(.SD, function(x) any(is.na(x)))]
+
+### Function: Eliminate some columns that would not be used for predictions
+### First 7 columns would not be used for the predictions that may skew the result 
+dropcolumns <- function(x){
+  x[,!c("V1","user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", 
+        "cvtd_timestamp", "new_window", "num_window"),with=F]
+}
+
+### Choose the training data with only the features that would be used for predictions
+### Determine features for training the model
+rawtrainfeatures <- dropcolumns(rawtrain[,eval(names(which(nacolumns == F))),with=F])
+
+### Function: Transform Features on the rawtrainingfeatures dataset
+transformfeatures <- function(x){
+   x[,classe:=factor(classe)]
+}
+
+
+### Do some cross validation using the training set that was sanitize and with the columns not used for
+### predictions removed using 60% of data from training as training set 
+### Create training and test set from the rawtrainfeatures dataset 
+### Threshold being used is 60%
+
+intrain  <- createDataPartition(rawtrainfeatures$classe, p=.60, list=FALSE)
+training <- rawtrainfeatures[intrain[,1]]
+testing  <- rawtrainfeatures[-intrain[,1]]
+
+### Create model based on RandomForest model to predict the classe variable 
+### Use training data from the rawtrainfeatures dataset 
+### Requires doSNOW package
+### 
+model.rf <- train(y=as.factor(training$classe), 
+                  x=training[,!"classe",with=F], 
+                  tuneGrid=data.frame(mtry=3), 
+                  trControl=trainControl(method="none"), method="parRF") 
+
+### Check for confusion matrix results 
+#confusionMatrix(predict(model.rf, newdata=transformfeatures(testing)), factor(testing$classe))
+#confusionMatrix(predict(model.rf, newdata=transformfeatures(testing)), factor(testing$classe))$overall["Kappa"]
+#print(varImp(model.rf, scale = FALSE))
+
+
+
+### CourseWork - write a file with the answer set in working directory 
+### Sample: "/Users/user1/Documents/RWorkingDirectory/Coursera-May2015"
+### Files: "problem_id_#[1:length(x)]
+
+##Function: Create the n files from running predictions using the testing file 
+write.pml.predictions <- function(x){
+        n = length(x)
+        for(i in 1:n ) {
+                filename = paste0("problem_id_",i,".txt")
+                write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)      
+        }        
+}
+### Run the model using the testing file we initial received 
+validation <- read.data("pml-testing.csv")
+library(xtable)
+
+### Pass the testing/validation file for the model.rf that we developed from the training set
+get
+write.pml.predictions(predict(model.rf, 
+        newdata=dropcolumns(validation[,eval(names(which(nacolumns == F))[-60]),with=F])))
+
+
+
+
+
+
