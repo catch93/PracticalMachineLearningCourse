@@ -24,7 +24,6 @@ read.data <- function(file){
 
 ### Read all files presented for the course
 rawtrain <- read.data("pml-training.csv")
-rawtest <- read.data("pml-testing.csv")
 
 ### Set the seed so that the output is reproducible
 set.seed(15)
@@ -90,11 +89,20 @@ write.pml.predictions <- function(x){
         }        
 }
 ### Run the model using the testing file we initial received 
-validateTesting <- read.data("pml-testing.csv")
-library(xtable)
+### Read the ORIGINAL testing file that we have set-aside 
 
-### Pass the testing/validation file for the model.rf that we developed from the training set
-get
+validateTesting <- read.data("pml-testing.csv")
+
+
+### Pass the testing file to see how the model.rf predicts the column classe
+### using an unseen set of data 
+### Using the function presented in the course, it would write out the predicted value for "classe"
+### and write the files with the convention 
+### problem_id_## where ## is 1 to length of the testing file 
+### Using the original testing set-aside earlier do the following:
+### 1. use the nacolumns to cleanse the find out the non-NA 
+### 2. use the dropcolumns to drop not-needed columns for predictions
+
 write.pml.predictions(predict(model.rf, 
         newdata=dropcolumns(validateTesting[,eval(names(which(nacolumns == F))[-60]),with=F])))
 
