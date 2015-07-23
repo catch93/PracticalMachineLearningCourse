@@ -3,9 +3,65 @@ title: "My_PMLCourseAnalysis"
 output: html_document
 ---
 
-This is an R Markdown document that provides the compiled code for the Course Project for Practical Machine Learning Course - Summer 2015. 
+# Practical ML Summer 2015
+
+**Author**: Elizabeth Barayuga
+This document provides an understanding of the course project of using Machine Learning (ML) algorithms to predict data. 
+
+##Overview
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. 
+<br>
+These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. 
+<br>
+In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+<br>
+More information is available from the website here: ***http://groupware.les.inf.puc-rio.br/har***
+(see the section on the Weight Lifting Exercise Dataset).
 
 
+##Data Involved in Model
+
+THe following data were provided as part of the course exercise.
+
+The training data for this project are available here: 
+**https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv**
+
+The test data are available here: 
+**https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv**
+
+The data for this project come from this source: **http://groupware.les.inf.puc-rio.br/har**. 
+
+
+## Goal
+
+The goal of your project is to predict the manner in which they did the exercise. 
+<br>
+This is the **"classe"** variable in the training set. 
+
+There are a total of 160 possible predictors and can be used to predict the **"classe"** variable.
+
+## Approach for Developing the Model
+
+1. Analyze the values for each predictors
+2. Cleanse the data 
+3. Select possible features that would be used for the prediction model 
+4. Identify possible method that would be used for prediction
+5. Train the model selected by using training dataset. 
+6. Identify a threshold for the training data that would be used for training 
+7. Validate the model by running it to the testing set that was set-aside from the training data 
+8. Check the confusion matrix for the performance of the model 
+9. Once acceptable, run the final validation on the final testing file 
+
+## Reproduceability 
+
+The whole exercise was run in MAC OS X Yosemite (10.10.4) and RStudio Version 0.98.1091
+
+Furthermore, certain libraries  were chosen to support the full exercise. To access these libraries, packages needs to be installed (if not yet installed) 
+In order to install packages in R the following command can be used: 
+        install.packages("caret")
+
+If the packages are already installed, then the libraries can be invoked:
 ```{r}
 library(caret)
 library(ggplot2)
@@ -15,80 +71,138 @@ library(xtable)
 library(randomForest)
 library(doSNOW)
 library(data.table)
+
+```
+We also chose a random seed to start the exercise. 
+
+```{r}
+### Set the seed so that the output is reproducible
+set.seed(15)
+```
+## Accessing the Data 
+
+In order to access the Data Sources, we have provided a way to download the data from the source sites and read the data into memory.
+
+We also did an initial cleansing of data by removing the #DIV/0! values in read method 
+
+
+```{r}
 ## Function: Download the input files provided in the Course
 ### pml-training.csv 
 ### pml-testing.csv 
 
 download.data <- function() {
- download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv",method="curl")
- download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv",method="curl")
+        download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv",method="curl")
+        download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv",method="curl")
 }
 
 ### Function: Read the file and clean it up 
 ### 1. Change all "#DIV/0! to blanks
 
-read.data <- function(file) {
- fread(file,na.strings=c("#DIV/0!",""))
+read.data <- function(file){
+        fread(file,na.strings=c("#DIV/0!",""))
 }
 
-### Read all files presented for the course
-rawtrain <- read.data("~/Documents/RWorkingDirectory/Coursera-May2015/pml-training.csv")
+### Create a rawtrain file to house the training data 
+rawtrain <- read.data("/Users/user1/Documents/RWorkingDirectory/Coursera-May2015/pml-training.csv")
 
-### Set the seed so that the output is reproducible
-set.seed(15)
+```
+## Methodology for Cleansing Data 
 
-### Get all the column names so we can use it subset it later on
-names <- colnames(rawtrain)
-
+        1. Replace all  #DIV/0! data as "NA" - accomplished during the read of the file into memory
+        2. Represent all empty data as "NA"
+        3. Identify which columns have "NA" as values and marked them accordingly.
+	
+```{r}
 ## Functions: Identify columns that contain NA and marked them accordingly
 nacolumns <- rawtrain[,sapply(.SD, function(x) any(is.na(x)))]
+```
+## Feature Selection 
 
+In any model, it would be good to analyze the data to see what features can be used to predict the **classe** variable. 
+
+The general goal of a good model is to be able to use the right features that can generalize well that it can be used to model with unseen data. 
+
+1. Run str to get an understanding of the different features available in training data. 
+        
+		str(training) 
+	
+2. Apply the cleansing strategies to the training data 
+		
+3. Identify columns that appear to provide metadata information and would contribute to over-fitting the model. Basing from the different attributes presented, the following columns can be eliminated:
+		
+		rownames - V1
+		user_name 
+		raw_timestamp_part_1
+		raw_timestamp_part_2
+		cvtd_timestamp
+		new_window
+		num_window
+
+
+```{r}
 ### Function: Eliminate some columns that would not be used for predictions
 ### First 7 columns would not be used for the predictions that may skew the result 
 dropcolumns <- function(x){
-  x[,!c("V1","user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", 
-        "cvtd_timestamp", "new_window", "num_window"),with=F]
+        x[,!c("V1","user_name", "raw_timestamp_part_1", "raw_timestamp_part_2", 
+              "cvtd_timestamp", "new_window", "num_window"),with=F]
 }
 
-### Choose the training data with only the features that would be used for predictions
+### Function: Transform Features on the datasets
+transformfeatures <- function(x){
+        x[,classe:=factor(classe)]
+}
+```
+## PARTITIONING TRAINING DATA FOR MODELING and CROSS VALIDATION 
+
+After choosing our features and cleansing the data, we would be able to partition our training data set.
+
+
+```{r}
 ### Determine features for training the model
 rawtrainfeatures <- dropcolumns(rawtrain[,eval(names(which(nacolumns == F))),with=F])
-
-### Function: Transform Features on the rawtrainingfeatures dataset
-transformfeatures <- function(x){
-   x[,classe:=factor(classe)]
-}
-
-
-### Do some cross validation using the training set that was sanitize and with the columns not used for
-### predictions removed using 60% of data from training as training set 
-### Create training and test set from the rawtrainfeatures dataset 
+### PARTITION Training data 
 ### Threshold being used is 60%
 
 intrain  <- createDataPartition(rawtrainfeatures$classe, p=.60, list=FALSE)
 training <- rawtrainfeatures[intrain[,1]]
 testing  <- rawtrainfeatures[-intrain[,1]]
+```
+## Using ML algorithms for prediction : Random Forest
 
-### Create model based on RandomForest model to predict the classe variable 
-### Use training data from the rawtrainfeatures dataset 
-### Requires doSNOW package
-### 
+1.  Model is created using all variables in the training set 
+2.  The value for randomly sampled variables is set to 3 (mtry=3)
+
+```{r}
 model.rf <- train(y=as.factor(training$classe), 
                   x=training[,!"classe",with=F], 
                   tuneGrid=data.frame(mtry=3), 
                   trControl=trainControl(method="none"), method="parRF") 
+```
+Predicting in-sample error using the testing partition from the training data set
 
+```{r}
 ### Check for confusion matrix results 
 confusionMatrix(predict(model.rf, newdata=transformfeatures(testing)), factor(testing$classe))
 confusionMatrix(predict(model.rf, newdata=transformfeatures(testing)), factor(testing$classe))$overall["Kappa"]
-print(varImp(model.rf, scale = FALSE))
+```
+The Plot for the Variable Impotence using in-sample error is:
+```{r, echo=FALSE}
+    print(plot(varImp(model.rf, scale = FALSE)))
+```
+
+## VALIDATION using the TESTING SET OUT-OF-SAMPLE ERROR
+<br>
+OUTPUT DIRECTORY: <Local R Working Directory> 
+        i.e "/Users/user1/Documents/RWorkingDirectory/Coursera-May2015"
+<br>
+OUTPUT FILES: "problem_id_#[1:length(x)]
+<br>
+We create predictions for the entire testing set provided using the same cleansing and feature selection criteria that we used in the training set. 
+There will be 1 file for each of the observations.
 
 
-
-### CourseWork - write a file with the answer set in working directory 
-### Sample: "/Users/user1/Documents/RWorkingDirectory/Coursera-May2015"
-### Files: "problem_id_#[1:length(x)]
-
+```{r}
 ##Function: Create the n files from running predictions using the testing file 
 write.pml.predictions <- function(x){
         n = length(x)
