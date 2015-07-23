@@ -229,13 +229,3 @@ validateTesting <- read.data("~/Documents/RWorkingDirectory/Coursera-May2015/pml
 write.pml.predictions(predict(model.rf, 
         newdata=dropcolumns(validateTesting[,eval(names(which(nacolumns == F))[-60]),with=F])))
 ```
-
-Here are some of the plots analyzed to see the relationship of the variables to the classe variable
-
-```{r, echo=FALSE}
-qplot(total_accel_belt,colour=classe,data=training,geom="density")
-qplot(total_accel_arm,colour=classe,data=training,geom="density")
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
-
